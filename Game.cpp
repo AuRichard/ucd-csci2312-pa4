@@ -13,5 +13,14 @@ namespace Gaming {
 	const unsigned Game::MIN_HEIGHT = 3;
 	const double Game::STARTING_AGENT_ENERGY = 20;
 	const double Game::STARTING_RESOURCE_CAPACITY = 10;
+	
+	// Constructor:	
+	Game::Game() {
+		__status = NOT_STARTED;
+        __width = MIN_WIDTH;
+        __height = MIN_HEIGHT;
+        __round = 0;
+    }
+
     
 }

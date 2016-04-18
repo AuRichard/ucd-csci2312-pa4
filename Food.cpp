@@ -4,6 +4,7 @@
 #include "Agent.h"
 #include "Food.h"
 #include <iomanip>
+#include <sstream>
 
 using namespace std;
 
@@ -20,6 +21,14 @@ namespace Gaming {
     }
 
     void Food::print(ostream &os) const {
-        os << FOOD_ID << left << __id;
+        string s;
+        s = to_string(__id);
+        stringstream sstream;
+        sstream << Food::FOOD_ID;
+        sstream << s;
+        getline(sstream, s);
+        for (int i = 0; i < s.length(); ++i) {
+            os << s[i];
+        }
     }
 }

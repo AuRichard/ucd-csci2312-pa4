@@ -2,9 +2,11 @@
 #include "Piece.h"
 #include <iostream>
 
+using namespace std;
+
 namespace Gaming {
 
-    unsigned int Piece::__idGen = 0;
+    unsigned int Piece::__idGen = 1000;
     Piece::Piece(const Game &g, const Position &p): __game(g) {
         __position = p;
         __finished = false;

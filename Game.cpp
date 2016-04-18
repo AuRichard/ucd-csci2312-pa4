@@ -26,6 +26,8 @@ namespace Gaming {
     const unsigned Game::MIN_HEIGHT = 3;
     const double Game::STARTING_AGENT_ENERGY = 20;
     const double Game::STARTING_RESOURCE_CAPACITY = 10;
+    
+    PositionRandomizer Game::__posRandomizer = PositionRandomizer();
 
     // Default Constructor:
     Game::Game() {
@@ -62,82 +64,59 @@ namespace Gaming {
 
     }
 
-    Game::Game(const Game &another) : Game() {
-        __status = NOT_STARTED;
-        __width = another.__width;
-        __height = another.__height;
-        __grid = another.__grid;
-        __round = 0;
-    }
-
     // Destructor:
-    Game::~Game() {
-    }
+    Game::~Game() { }
 
-    void Game::populate() // populate the grid (used in automatic random initialization of a Game)
-    {
+    void Game::populate(){
         __numInitAgents = (__width * __height) / NUM_INIT_AGENT_FACTOR;
         __numInitResources = (__width * __height) / NUM_INIT_RESOURCE_FACTOR;
 
         unsigned int numAdvantages = __numInitResources / 2;
         unsigned int numStrategic = __numInitAgents / 2;
         unsigned int numSimple = __numInitAgents / 2;
-        unsigned int numFoods = __numInitResources / 2;
-        if (__numInitResources % 2 == 1)
-            numFoods++;
+        unsigned int numFoods = __numInitResources - numAdvantages;
 
         // Taken from section 6.5 of the default README file:
         default_random_engine gen;
         uniform_int_distribution<int> d(0, __width * __height);
 
-        if (__numInitAgents % 2 == 1)
-            numStrategic++;
-
         // populate Strategic agents:
-        while (numStrategic > 0)
-        {
-            int i = d(gen); 
-            if (__grid[i] == nullptr)
-            { 
+        while (numStrategic > 0) {
+            int i = d(gen);
+            if (i != (__width * __height) && __grid[i] == nullptr) {
                 Position pos(i / __width, i % __width);
-                __grid[i] = new Strategic(*this, pos, Game::STARTING_AGENT_ENERGY);
+                __grid[i] = new Strategic(*this, pos, STARTING_AGENT_ENERGY);
                 numStrategic--;
             }
         }
 
         // populate Simple agents:
-        while (numSimple > 0)
-        {
-            int i = d(gen); 
-            if (__grid[i] == nullptr)
-            { 
+        while (numSimple > 0) {
+            int i = d(gen);
+            if (i != (__width * __height) && __grid[i] == nullptr) {
                 Position pos(i / __width, i % __width);
-                __grid[i] = new Simple(*this, pos, Game::STARTING_AGENT_ENERGY);
+                __grid[i] = new Simple(*this, pos, STARTING_AGENT_ENERGY);
                 numSimple--;
             }
         }
 
 
         // populate Advantage:
-        while (numAdvantages > 0)
-        {
-            int i = d(gen); 
-            if (__grid[i] == nullptr)
-            { 
+        while (numAdvantages > 0) {
+            int i = d(gen);
+            if (i != (__width * __height) && __grid[i] == nullptr) {
                 Position pos(i / __width, i % __width);
-                __grid[i] = new Advantage(*this, pos, Game::STARTING_RESOURCE_CAPACITY);
+                __grid[i] = new Advantage(*this, pos, STARTING_RESOURCE_CAPACITY);
                 numAdvantages--;
             }
         }
 
         // populate food:
-        while (numFoods > 0)
-        {
-            int i = d(gen); 
-            if (__grid[i] == nullptr)
-            { 
+        while (numFoods > 0) {
+            int i = d(gen);
+            if (i != (__width * __height) && __grid[i] == nullptr) {
                 Position pos(i / __width, i % __width);
-                __grid[i] = new Food(*this, pos, Game::STARTING_RESOURCE_CAPACITY);
+                __grid[i] = new Food(*this, pos, STARTING_RESOURCE_CAPACITY);
                 numFoods--;
             }
         }
@@ -151,8 +130,7 @@ namespace Gaming {
     unsigned int Game::getNumSimple() const {
         unsigned int numAgents = 0;
 
-        for (auto it = __grid.begin(); it != __grid.end(); ++it)
-        {
+        for (auto it = __grid.begin(); it != __grid.end(); ++it){
             Simple *simple = dynamic_cast<Simple*>(*it);
             if (simple) numAgents++;
         }
@@ -271,62 +249,55 @@ namespace Gaming {
 
     const Surroundings Game::getSurroundings(const Position &pos) const {
 
-        Surroundings *surro = new Surroundings;
-        int counter = 0;
-        for (int j = -1; j <= 1; j++) {
-            for (int k = -1; k <= 1; k++) {
-                int position = (((pos.x + j) * __width) + (pos.y + k));
-                if (pos.x+j < 0 || pos.x+j >= __height || pos.y+k <0 || pos.y+k >= __width) {
-                    surro->array[counter] = INACCESSIBLE;
-                    counter++;
-                }
-                else if (counter == 4) {
-                    surro->array[counter] = SELF;
-                    counter++;
-                }
-                else if (__grid[position] ==  nullptr) {
-                    surro->array[counter] = EMPTY;
-                    counter++;
+        Surroundings surro;
+        for (int i = 0; i < 9; ++i) {
+            surro.array[i] = EMPTY;
+        }
+        for (int row = -1; row <= 1; ++row) {
+            for (int col = -1; col <= 1; ++col) {
+                if (pos.x + row >= 0 && pos.x + row < __height
+                    && pos.y + col >= 0 && pos.y + col < __width) {
+                    unsigned int index = pos.y + col + ((pos.x + row) * __width);
+                    if (__grid[index])
+                        surro.array[col + 1 + ((row + 1) * 3)] = __grid[index]->getType();
                 }
                 else {
-                    surro->array[counter] = __grid[position]->getType();
-                    counter++;
+                    surro.array[col + 1 + ((row + 1) * 3)] = INACCESSIBLE;
                 }
-
             }
         }
+        surro.array[4] = SELF;
 
-        surro->array[4] = SELF;
-        return *surro;
+        return surro;
     }
 
     const ActionType Game::reachSurroundings(const Position &from, const Position &to) {
 
-        int xDiff = to.x - from.x;
-        int yDiff = to.y - from.y;
-        ActionType holder = STAY;
-
-        if(xDiff == -1 && yDiff == -1)
-            holder = NW;
-        else if(xDiff == -1 && yDiff == 0)
-            holder = N;
-        else if(xDiff == -1 && yDiff == 1)
-            holder = NE;
-        else if(xDiff == 0 && yDiff == -1)
-            holder = W;
-        else if(xDiff == 0 && yDiff == 0)
-            holder = STAY;
-        else if(xDiff == 0 && yDiff == 1)
-            holder = E;
-        else if(xDiff == 1 && yDiff == -1)
-            holder = SW;
-        else if(xDiff == 1 && yDiff == 0)
-            holder = S;
-        else if(xDiff == 1 && yDiff == 1)
-            holder = SE;
-
-
-        return holder;
+        int xDiff = to.x - from.x + 1;
+        int yDiff = to.y - from.y + 1;
+        unsigned int index = (yDiff + (xDiff * 3));
+        switch (index) {
+            case 0:
+                return NW;
+            case 1:
+                return N;
+            case 2:
+                return NE;
+            case 3:
+                return W;
+            case 4:
+                return STAY;
+            case 5:
+                return E;
+            case 6:
+                return SW;
+            case 7:
+                return S;
+            case 8:
+                return SE;
+            default:
+                return STAY;
+        }
 
     }
 
@@ -349,136 +320,134 @@ namespace Gaming {
     }
 
     const Position Game::move(const Position &pos, const ActionType &ac) const {
-        Position newPos;
-
-        if(ac == NW)
-            newPos = Position(pos.x-1,pos.y-1);
-        else if(ac == N)
-            newPos = Position(pos.x-1,pos.y);
-        else if(ac == NE)
-            newPos = Position(pos.x-1,pos.y+1);
-        else if(ac == W)
-            newPos = Position(pos.x,pos.y-1);
-        else if(ac == STAY)
-            newPos = Position(pos.x,pos.y);
-        else if(ac == E)
-            newPos = Position(pos.x,pos.y+1);
-        else if(ac == SW)
-            newPos = Position(pos.x+1,pos.y-1);
-        else if(ac == S)
-            newPos = Position(pos.x+1,pos.y);
-        else if(ac == SE)
-            newPos = Position(pos.x+1,pos.y+1);
-
-        return newPos;
+       if (isLegal(ac, pos)) {
+            int x, y;
+            x = pos.x;
+            y = pos.y;
+            switch (ac) {
+                case E: 
+                    y++; 
+                    break;
+                case NE: 
+                    y++; 
+                    x--; 
+                    break;
+                case N: 
+                    x--; 
+                    break;
+                case NW: 
+                    y--; 
+                    x--; 
+                    break;
+                case W: 
+                    y--; 
+                    break;
+                case SW: 
+                    y--; 
+                    x++; 
+                    break;
+                case S: 
+                    x++; 
+                    break;
+                case SE: 
+                    x++; 
+                    y++; 
+                    break;
+                default: 
+                    break;
+            }
+            Position p((unsigned )x, (unsigned)y);
+            return p;
+        }
+        return pos;
     }
 
     void Game::round(){
-
-        if(__round == 0 && __verbose){
-            __status = PLAYING;
-            cout << endl << *this;
+        set<Piece*> pieces;
+        for (auto it = __grid.begin(); it != __grid.end(); ++it) {
+            if (*it) {
+                pieces.insert(pieces.end(), *it);
+                (*it)->setTurned(false);
+            }
         }
-        for (int i = 0; i < __grid.size(); ++i) {
-            if(__grid[i]!= nullptr){
-                if(__grid[i]->isViable()) {
-                    if (!__grid[i]->getTurned()) {
-                        Agent * agent = dynamic_cast<Agent*>(__grid[i]);
-                        if(agent) {
-                            __grid[i]->setTurned(true);
-                            Position currentPos = __grid[i]->getPosition();
-                            Surroundings s = getSurroundings(currentPos);
-                            ActionType aT = __grid[i]->takeTurn(s);
-                            if (aT != STAY) {
-                                Position newPos = move(currentPos, aT);
-                                int newPosIndx = (newPos.x * __width + newPos.y);
-                                (*__grid[i]) * (*__grid[newPosIndx]);
-                                if(!__grid[i]->isViable()){
-                                    delete __grid[i];
-                                    __grid[i]= nullptr;
-                                }
-                                else {
-                                    __grid[i]->setPosition(newPos);
-                                    if (__grid[newPosIndx] != nullptr) {
-                                        delete __grid[newPosIndx];
-                                        __grid[newPosIndx] = __grid[i];
-                                        __grid[i] = nullptr;
-                                    }
-                                    else {
-                                        __grid[newPosIndx] = __grid[i];
-                                        __grid[i] = nullptr;
-                                    }
-                                }
-                                if(!__grid[newPosIndx]->isViable()){
-                                    delete __grid[newPosIndx];
-                                    __grid[newPosIndx]= nullptr;
-                                }
-                            }
+        
+    for (auto it = pieces.begin(); it != pieces.end(); ++it) {
+            if (!(*it)->getTurned()) {
+                (*it)->setTurned(true);
+                (*it)->age();
+                ActionType ac = (*it)->takeTurn(getSurroundings((*it)->getPosition()));
+                Position pos0 = (*it)->getPosition();
+                Position pos1 = move(pos0, ac);
+                if (pos0.x != pos1.x || pos0.y != pos1.y) {
+                    Piece *p = __grid[pos1.y + (pos1.x * __width)];
+                    if (p) {
+                        (*(*it)) * (*p);
+                        if ((*it)->getPosition().x != pos0.x || (*it)->getPosition().y != pos0.y) {
+                            __grid[pos1.y + (pos1.x * __width)] = (*it);
+                            __grid[pos0.y + (pos0.x * __width)] = p;
                         }
+                    } else {
+                        (*it)->setPosition(pos1);
+                        __grid[pos1.y + (pos1.x * __width)] = (*it);
+                        __grid[pos0.y + (pos0.x * __width)] = nullptr;
                     }
                 }
             }
+        }        
+        
+    for (unsigned int i = 0; i < __grid.size(); ++i) {
+        if (__grid[i] && !(__grid[i]->isViable())) {
+            delete __grid[i];
+            __grid[i] = nullptr;
         }
-        for (int j = 0; j < __grid.size(); ++j) {
-            if(__grid[j] != nullptr) {
-                if (!__grid[j]->isViable()) {
-                    delete __grid[j];
-                    __grid[j] = nullptr;
-                }
-                else {
-                    __grid[j]->setTurned(false);
-                    __grid[j]->age();
-                }
-            }
+    }
+    
+    if (getNumResources() <= 0) {
+        __status = Status::OVER;
         }
-        if(getNumPieces()< 2 || getNumResources() < 1)
-            __status = OVER;
-        ++__round; //
-
-        if(__verbose)
-            cout << endl << *this;
+        
+        __round++;
 
     }
-
+    
     void Game::play(bool verbose) {
-        if (mander == 'A') {
-            __status = PLAYING;
-            __verbose = verbose;
-            cout << *this;
-            while (__status != OVER) {
-                round();
-                if (verbose)
-                    cout << *this;
-            }
-            if (!verbose)
-                cout << *this;
+        __verbose = verbose;
+        __status = PLAYING;
+        cout << *this;
+        while (__status != OVER) {
+            round();
+            if (verbose) cout << *this;
         }
+        if (!verbose) cout << *this;
     }
 
     ostream &operator<<(ostream &os, const Game &game) {
-        int counter = 0;
-
-        os << "Round " << game.getRound() << endl;
-
-        for (int i=0; i < game.__height; i++){
-            for (int k=0; k < game.__width; k++){
-                if (game.__grid[counter] == nullptr){
-                    os << "[" << "     " << "]";
-                }
-                else{
-                    os << "[" << *game.__grid[counter] << " ]";
-                }
-                counter++;
+      os << "Round " << game.__round << endl;
+        int column = 0;
+        for (auto it = game.__grid.begin(); it != game.__grid.end(); ++it) {
+            if (*it == nullptr) {
+                os << "[" << setw(6) << "]";
+            } else {
+                stringstream ss;
+                ss << "[" << **it;
+                string str;
+                getline(ss, str);
+                os << str << "]";
             }
-            os << endl;
+            if (++column == game.__width) {
+                column = 0;
+                os << endl;
+            }
         }
-
-        if(game.__status == Game::PLAYING)
-            os << "Status: Playing...";
-        else if(game.__status == Game::NOT_STARTED)
-            os << "Status: Not Started...";
-        else
-            os << "Status: Over!";
+        os << "Status: ";
+        switch (game.getStatus()) {
+            case Game::Status::NOT_STARTED:
+                cout << "Not Started..." << endl; break;
+            case Game::Status::PLAYING:
+                cout << "Playing..." << endl; break;
+            default:
+                cout << "Over!" << endl; break;
+        }
         return os;
     }
 

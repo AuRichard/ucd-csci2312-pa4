@@ -1,3 +1,4 @@
+#include <random>
 #include "Game.h"
 #include "AggressiveAgentStrategy.h"
 
@@ -7,93 +8,86 @@ namespace Gaming {
 
     const double AggressiveAgentStrategy::DEFAULT_AGGRESSION_THRESHOLD = Game::STARTING_AGENT_ENERGY * 0.75;
 
-    AggressiveAgentStrategy::AggressiveAgentStrategy(double agentEnergy) {
-        __agentEnergy = agentEnergy;
-    }
+    AggressiveAgentStrategy::AggressiveAgentStrategy(double agentEnergy) { __agentEnergy = agentEnergy; }
 
     AggressiveAgentStrategy::~AggressiveAgentStrategy() { }
 
     ActionType AggressiveAgentStrategy::operator()(const Surroundings &s) const {
-        ActionType ac;
-        vector<int> pos;
-
+        vector<int> positions;
         default_random_engine gen;
 
-        if(__agentEnergy > DEFAULT_AGGRESSION_THRESHOLD){
-            for (int i = 0; i < s.array.size(); i++) {
-                if (s.array[i] == SIMPLE || s.array[i] == STRATEGIC) {
-                    pos.push_back(i);
+        if (__agentEnergy > DEFAULT_AGGRESSION_THRESHOLD) {
+            for (int i = 0; i < 9; ++i) {
+                if (s.array[i] == PieceType::SIMPLE || s.array[i] == PieceType::STRATEGIC) {
+                    positions.push_back(i);
                 }
             }
         }
 
-        if (pos.size() == 0) {
-            for (int i = 0; i < s.array.size(); i++) {
-                if (s.array[i] == ADVANTAGE) {
-                    pos.push_back(i);
+        if (positions.size() == 0) {
+            for (int i = 0; i < 9; ++i) {
+                if (s.array[i] == PieceType::ADVANTAGE) {
+                    positions.push_back(i);
                 }
             }
         }
 
-        if (pos.size() == 0) {
-            for (int i = 0; i < s.array.size(); i++) {
-                if (s.array[i] == FOOD) {
-                    pos.push_back(i);
+        if (positions.size() == 0) {
+            for (int i = 0; i < 9; ++i) {
+                if (s.array[i] == PieceType::EMPTY) {
+                    positions.push_back(i);
                 }
             }
         }
 
-        if (pos.size() == 0) {
-            for (int i = 0; i < s.array.size(); i++) {
-                if (s.array[i] == EMPTY) {
-                    pos.push_back(i);
+        if (positions.size() == 0) {
+            for (int i = 0; i < 9; ++i) {
+                if (s.array[i] == PieceType::FOOD) {
+                    positions.push_back(i);
                 }
             }
         }
 
-        if (pos.size() > 0) {
-            uniform_int_distribution<> dis(0, (int) (pos.size()-1));
-            int index = dis(gen);
+        if (positions.size() > 0) {
 
-
-            if (pos.size() == 1) {
-                index = pos[0];
-            }
-
+            int index = positions[gen() % positions.size()];
+            if (positions.size() == 1) index = positions[0];
+            ActionType action;
             switch (index) {
-                case 1 :
-                    ac = N;
+                case 0: 
+                    action = NW; 
                     break;
-                case 2 :
-                    ac = NE;
+                case 1: 
+                    action = N; 
                     break;
-                case 5 :
-                    ac = E;
+                case 2: 
+                    action = NE; 
                     break;
-                case 8 :
-                    ac = SE;
+                case 3: 
+                    action = W; 
                     break;
-                case 7 :
-                    ac = S;
+                case 4: 
+                    action = STAY; 
                     break;
-                case 6 :
-                    ac = SW;
+                case 5: 
+                    action = E; 
                     break;
-                case 3 :
-                    ac = W;
+                case 6: 
+                    action = SW; 
                     break;
-                case 0 :
-                    ac = NW;
+                case 7: 
+                    action = S; 
                     break;
-                case 4 :
-                    ac = STAY;
+                case 8: 
+                    action = SE; 
                     break;
-                default :
-                    ac = STAY;
+                default: 
+                    action = STAY;
             }
-            return ac;
-
+            return (action);
         }
-        return STAY;
+
+        return ActionType::STAY;
     }
+
 }

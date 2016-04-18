@@ -1,4 +1,5 @@
-#include "Game.h"
+#include <random>
+#include "DefaultAgentStrategy.h"
 
 using namespace std;
 
@@ -9,82 +10,79 @@ namespace Gaming {
     DefaultAgentStrategy::~DefaultAgentStrategy() { }
 
     ActionType DefaultAgentStrategy::operator()(const Surroundings &s) const {
-        ActionType action;
-        vector<int> pos;
+        vector<int> positions;
         default_random_engine gen;
 
-        for (int i = 0; i < s.array.size(); i++) {
-            if (s.array[i] == ADVANTAGE) {
-                pos.push_back(i);
+        
+        for (int i = 0; i < 9; ++i) {
+            if (s.array[i] == PieceType::ADVANTAGE) {
+                positions.push_back(i);
             }
         }
 
-        if (pos.size() == 0) {
-            for (int i = 0; i < s.array.size(); i++) {
-                if (s.array[i] == FOOD) {
-                    pos.push_back(i);
+        if (positions.size() == 0) {
+            for (int i = 0; i < 9; ++i) {
+                if (s.array[i] == PieceType::FOOD) {
+                    positions.push_back(i);
+                }
+            }
+        }
+        
+        if (positions.size() == 0) {
+            for (int i = 0; i < 9; ++i) {
+                if (s.array[i] == PieceType::EMPTY) {
+                    positions.push_back(i);
+                }
+            }
+        }
+        
+        if (positions.size() == 0) {
+            for (int i = 0; i < 9; ++i) {
+                if (s.array[i] == PieceType::SIMPLE) {
+                    positions.push_back(i);
                 }
             }
         }
 
-        if (pos.size() == 0) {
-            for (int i = 0; i < s.array.size(); i++) {
-                if (s.array[i] == EMPTY) {
-                    pos.push_back(i);
-                }
-            }
-        }
-
-        if (pos.size() == 0) {
-            for (int i = 0; i < s.array.size(); i++) {
-                if (s.array[i] == SIMPLE) {
-                    pos.push_back(i);
-                }
-            }
-        }
-
-        if (pos.size() > 0) {
-            uniform_int_distribution<> dis(0, (int) (pos.size()-1));
-            int index = dis(gen);
-
-
-            if (pos.size() == 1) {
-                index = pos[0];
-            }
-
+        if (positions.size() > 0) {
+            int index = positions[gen() % positions.size()];
+            if (positions.size() == 1) index = positions[0];
+            ActionType action;
             switch (index) {
-                case 1 :
-                    action = N;
-                    break;
-                case 2 :
-                    action = NE;
-                    break;
-                case 5 :
-                    action = E;
-                    break;
-                case 8 :
-                    action = SE;
-                    break;
-                case 7 :
-                    action = S;
-                    break;
-                case 6 :
-                    action = SW;
-                    break;
-                case 3 :
-                    action = W;
-                    break;
-                case 0 :
+                case 0:
                     action = NW;
                     break;
-                case 4 :
+                case 1:
+                    action = N;
+                    break;
+                case 2:
+                    action = NE;
+                    break;
+                case 3:
+                    action = W;
+                    break;
+                case 4:
                     action = STAY;
                     break;
-                default :
+                case 5:
+                    action = E;
+                    break;
+                case 6:
+                    action = SW;
+                    break;
+                case 7:
+                    action = S;
+                    break;
+                case 8:
+                    action = SE;
+                    break;
+                default:
                     action = STAY;
             }
-            return action;
+            return (action);
         }
-        return STAY;
+
+        return ActionType::STAY;
     }
+
 }

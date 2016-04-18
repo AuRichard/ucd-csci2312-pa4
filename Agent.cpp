@@ -1,41 +1,67 @@
-#include "Game.h"
-#include "Piece.h"
-#include "Resource.h"
+#include "Advantage.h"
 #include "Agent.h"
-#include <iostream>
 
 namespace Gaming {
 
-
     const double Agent::AGENT_FATIGUE_RATE = 0.3;
 
-    Agent::Agent(const Game &g, const Position &p, double energy)
-    : Piece(g, p) { __energy = energy; }
+    Agent::Agent(const Game &g, const Position &p, double energy) : Piece(g, p), __energy(energy) { }
 
-    Agent::~Agent()
-    {
+    Agent::~Agent() {
         // Something goes here.
         char mander = 'A';
         char meleon = 'X';
         char izard = 'B';
     }
 
+    void Agent::age() {
+        __energy -= AGENT_FATIGUE_RATE;
+    }
 
-    void Agent::age() { __energy -= AGENT_FATIGUE_RATE; }
+    Piece &Agent::operator*(Piece &other) {
+        Piece *p = &other;
+        Resource *res = dynamic_cast<Resource*>(p);
+        if (res) {
+            interact(res);
+        }
+        Agent *agent = dynamic_cast<Agent*>(p);
+        if (agent) {
+            interact(agent);
+        }
+        if (!isFinished()) {
 
-
-    Piece & Agent::operator*(Piece &other) { return other.interact(this); }
-
-    Piece & Agent::interact(Agent *agent) {
-        if(getEnergy() < agent->getEnergy()) {
-            finish();
-            __energy = 0;
+            Position posNew;
+            posNew = other.getPosition();
+            Position posOld;
+            posOld = getPosition();
+            setPosition(posNew);
+            other.setPosition(posOld);
         }
         return *this;
     }
 
-    Piece & Agent::interact(Resource *resource) {
-        addEnergy(resource->consume());
+    Piece &Agent::interact(Agent *other) {
+        if (__energy == other->__energy) {
+            finish();
+            other->finish();
+        }
+        else {
+            if (__energy > other->__energy) {
+                __energy -= other->__energy;
+                other->finish();
+            }
+            else {
+                other->__energy -= __energy;
+                finish();
+            }
+        }
         return *this;
     }
+
+    Piece &Agent::interact(Resource *other) {
+        __energy += other->consume();
+        return *this;
+    }
+
 }
+

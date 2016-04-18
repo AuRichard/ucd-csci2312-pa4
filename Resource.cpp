@@ -2,6 +2,8 @@
 #include "Resource.h"
 #include "Game.h"
 
+using namespace std;
+
 namespace Gaming {
     
     const double Resource::RESOURCE_SPOIL_FACTOR = 1.2;
@@ -11,18 +13,20 @@ namespace Gaming {
     Resource::~Resource() { }
 
     double Resource::consume() {
-        __capacity = 0.00;
-        return __capacity;
+        double omnomnom = __capacity;
+        __capacity = -1;
+        finish();
+        return omnomnom;
     }
 
     void Resource::age() {
         __capacity /= RESOURCE_SPOIL_FACTOR;
         if (__capacity < 0.001)
             __capacity = 0;
+        finish(); // whoops
     }
 
     ActionType Resource::takeTurn(const Surroundings &s) const { return Gaming::STAY; }
-
 
     Piece & Resource::operator*(Piece &other) { return other.interact(this); }
 
